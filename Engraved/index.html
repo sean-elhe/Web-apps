@@ -11,13 +11,14 @@
 <body>
   <main class="card">
 
-    <div class="selector-row">
-      <select id="bookSelect"></select>
-      <select id="chapterSelect"></select>
-      <select id="difficultySelect"></select>
+    <div class="progress-row">
+          <span id="progressCurrent"></span>
+          <progress id="progressBar" value="0" max="100"></progress>
+          <span id="progressTotal"></span>
     </div>
 
     <h1 id="reference">Genesis</h1>
+
 
     <p id="verseText">
       Click the button to show a verse.
@@ -27,6 +28,13 @@
       <button id="prevBtn"><<</button>
       <button id="randomBtn">?</button>
       <button id="nextBtn">>></button>
+    </div>
+
+    
+    <div class="selector-row">
+      <select id="bookSelect"></select>
+      <select id="chapterSelect"></select>
+      <select id="difficultySelect"></select>
     </div>
 
   </main>

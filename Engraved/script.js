@@ -135,16 +135,31 @@ function fillDifficultyDropdown() {
 function displayCurrentVerse() {
     const verse =
         currentChapter.verses[currentVerseIndex];
-    const difficulty =
-        document.getElementById("difficultySelect").value;
-
     document.getElementById("reference").textContent =
         `${book.book} ${currentChapter.chapter}:${verse.verse}`;
+
+    const difficulty =
+        document.getElementById("difficultySelect").value;
 
     const verseDisplay =
         replacingWords(verse.text, difficulty);
 
     displayObfuscatedVerse(verseDisplay);
+
+    updateProgressBar();
+}
+
+function updateProgressBar() {
+    const progressBar = document.getElementById("progressBar");
+
+    progressBar.value = currentVerseIndex;
+    progressBar.max = currentChapter.verses.length;
+
+    document.getElementById("progressCurrent").textContent =
+        `${currentChapter.chapter}:${currentVerseIndex + 1}`;
+
+    document.getElementById("progressTotal").textContent =
+        `${currentVerseIndex}/${currentChapter.verses.length}`;
 }
 
 function replacingWords(text, difficultyLevel = "Easy") {
