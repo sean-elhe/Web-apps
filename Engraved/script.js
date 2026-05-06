@@ -67,9 +67,12 @@ const bookFiles = {
 "Revelation": "data/Revelation.json"
 }
 
+const difficultyLevels = ["Easy", "Medium", "Hard"];
+
 let book = null;
 let currentChapter = null;
 let currentVerseIndex = 0;
+let difficultyLevel = "Easy";
 
 async function loadBook(bookName) {
     const response = await fetch(bookFiles[bookName]);
@@ -116,46 +119,109 @@ function fillChapterDropdown() {
     });
 }
 
+function fillDifficultyDropdown() {
+    const difficultySelect = document.getElementById("difficultySelect");
+
+    difficultySelect.innerHTML = "";
+
+    difficultyLevels.forEach((level) => {
+        const option = document.createElement("option");
+        option.value = level;
+        option.textContent = level;
+        difficultySelect.appendChild(option);
+    });
+}
+
 function displayCurrentVerse() {
-    const verse = currentChapter.verses[currentVerseIndex];
+    const verse =
+        currentChapter.verses[currentVerseIndex];
+    const difficulty =
+        document.getElementById("difficultySelect").value;
 
     document.getElementById("reference").textContent =
         `${book.book} ${currentChapter.chapter}:${verse.verse}`;
 
-    document.getElementById("verseText").textContent =
-        verse.text;
+    const verseDisplay =
+        replacingWords(verse.text, difficulty);
+
+    displayObfuscatedVerse(verseDisplay);
 }
 
-function showRandomVerse() {
-    if (book === null) {
-        console.warn("Bible not loaded yet.");
-        return;
-    }
+function replacingWords(text, difficultyLevel = "Easy") {
+    const difficultiesMap = {
+        Easy: 0.20,
+        Medium: 0.40,
+        Hard: 0.60
+    };
 
-    const selectedChapterIndex =
-        Number(document.getElementById("chapterSelect").value) - 1;
- 
-    const chapter = book.chapters.find(
-        (ch) => ch.chapter === selectedChapterIndex + 1
+    const difficulty =
+        difficultiesMap[difficultyLevel] ?? 0.25;
+
+    const splitWords = text
+        .split(/[ —]+/)
+        .filter(word => word.trim() !== "");
+
+    const replaceableIndices = splitWords
+        .map((word, index) => ({ word, index }))
+        .filter(item =>
+            item.word.length >= 3 &&
+            /[a-zA-Z]/.test(item.word)
+        )
+        .map(item => item.index);
+
+    const count = Math.max(
+        1,
+        Math.round(replaceableIndices.length * difficulty)
     );
 
-    const randomVerseIndex =
-        Math.floor(Math.random() * chapter.verses.length);
+    const shuffledIndices = replaceableIndices
+        .sort(() => Math.random() - 0.5);
 
-    const verse = chapter.verses[randomVerseIndex];
+    const indicesToReplace =
+        new Set(shuffledIndices.slice(0, count));
 
-    document.getElementById("reference").textContent =
-        `${book.book} ${chapter.chapter}:${verse.verse}`;
+    const hiddenWords = [];
 
-    document.getElementById("verseText").textContent =
-        verse.text;
+    const wordList = splitWords.map((word, index) => {
+        const isHidden = indicesToReplace.has(index);
+
+        if (isHidden) {
+            hiddenWords.push(word);
+        }
+
+        return {
+            word: word,
+            isHidden: isHidden,
+            index: index
+        };
+    });
+
+    return {
+        original: text,
+        wordList: wordList,
+        hiddenWords: hiddenWords
+    };
+}
+
+function displayObfuscatedVerse(verseDisplay) {
+    const verseText = document.getElementById("verseText");
+
+    verseText.innerHTML = "";
+
+    verseDisplay.wordList.forEach(item => {
+        if (item.isHidden) {
+            verseText.innerHTML += `<strong><u>_____</u></strong> `;
+        } else {
+            verseText.innerHTML += `${item.word} `;
+        }
+    });
 }
 
 document
     .getElementById("bookSelect")
     .addEventListener("change", (event) => {
         loadBook(event.target.value);
-});
+    });
 
 document
     .getElementById("chapterSelect")
@@ -171,8 +237,16 @@ document
     });
 
 document
+    .getElementById("difficultySelect")
+    .addEventListener("change", () => {
+        displayCurrentVerse();
+    });
+
+document
     .getElementById("randomBtn")
-    .addEventListener("click", showRandomVerse);
+    .addEventListener("click", () => {
+        displayCurrentVerse();
+    });
 
 document
     .getElementById("nextBtn")   
@@ -192,5 +266,6 @@ document
         }
     });
 
+fillDifficultyDropdown();
 fillBookDropdown();
 loadBook("Genesis");

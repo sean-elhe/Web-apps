@@ -51,7 +51,7 @@ button {
 
 .select {
     padding: 10px 14px;
-    border: none;   
+    border: 1px solid black rounded;
     border-radius: 12px;
     font-size: 16px;
 }
