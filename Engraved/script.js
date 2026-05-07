@@ -75,6 +75,9 @@ let currentVerseIndex = 0;
 let difficultyLevel = "Easy";
 let stage = 1;
 let currentVerseDisplay = null;
+let correctCount = 0;
+let totalHiddenWords = 0;
+let verseScores = [];
 
 async function loadBook(bookName) {
     const response = await fetch(bookFiles[bookName]);
@@ -139,7 +142,7 @@ function displayCurrentVerse() {
         currentChapter.verses[currentVerseIndex];
 
     document.getElementById("reference").textContent =
-        `${book.book} ${currentChapter.chapter}:${verse.verse}`;
+        `${book.book} ${currentChapter.chapter}`;
 
     const difficulty =
         document.getElementById("difficultySelect").value;
@@ -313,6 +316,62 @@ function setupInputLogic(){
         });
 }
 
+function calculateScore() {
+    let verseCorrect = 0;
+    let verseTotal = 0;
+
+    currentVerseDisplay.wordList.forEach(item => {
+
+        if (item.isHidden) {
+
+            verseTotal++;
+
+            const userInput =
+                document.querySelector(
+                    `input[data-index="${item.index}"]`
+            )?.value || "" ;
+
+            if (closeAnswer(userInput, item.word)) {
+                verseCorrect++;
+            }
+        }
+    });
+
+    correctCount += verseCorrect;
+    totalHiddenWords += verseTotal;
+
+    verseScores.push({
+        chapter: currentChapter.chapter,
+        verse: currentVerseIndex + 1,
+        correct: verseCorrect,
+        total: verseTotal
+    });
+}    
+
+function showScoreScreen() {
+    currentVerseIndex = 0;
+    document.getElementById("practiceScreen").classList.add("hidden");
+    document.getElementById("scoreScreen").classList.remove("hidden");
+
+    document.getElementById("scoreHeader").textContent =
+        `${book.book} ${currentChapter.chapter}`;
+    document.getElementById("scoreText").textContent =
+        `${correctCount}/${totalHiddenWords}`
+
+    const verseScoreList =
+        document.getElementById("verseScoreList");
+
+    verseScoreList.innerHTML = "";
+
+    verseScores.forEach(score => {
+        verseScoreList.innerHTML += `
+            <p>
+                ${score.chapter}:${score.verse} - ${score.correct}/${score.total}
+            </p>
+        `;
+    });
+}
+
 document
     .getElementById("bookSelect")
     .addEventListener("change", (event) => {
@@ -348,6 +407,7 @@ document
     .getElementById("nextBtn")   
     .addEventListener("click", () => {
         if (stage === 1) {
+            calculateScore();
             stage = 2;
             displayVerseWords();
             return;
@@ -357,6 +417,8 @@ document
             if (currentVerseIndex < currentChapter.verses.length - 1) {
                 currentVerseIndex++;
                 displayCurrentVerse();
+            } else {
+                showScoreScreen();
             }
         }
     });
@@ -364,10 +426,17 @@ document
 document
     .getElementById("prevBtn")   
     .addEventListener("click", () => {
-        if (currentVerseIndex > 0) {
-            currentVerseIndex--;
-            displayCurrentVerse();
-        }
+        showScoreScreen();
+    });
+
+document
+    .getElementById("restartBtn")   
+    .addEventListener("click", () => {
+        document.getElementById('scoreScreen').classList.add("hidden");
+        document.getElementById('practiceScreen').classList.remove("hidden");
+
+        stage = 1;
+        displayCurrentVerse();
     });
 
 fillDifficultyDropdown();
