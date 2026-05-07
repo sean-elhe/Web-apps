@@ -77,7 +77,12 @@ let stage = 1;
 let currentVerseDisplay = null;
 let correctCount = 0;
 let totalHiddenWords = 0;
+
+let verseMode = "ordered";
 let verseScores = [];
+let verseOrder = [];
+let verseOrderIndex = 0;
+let verseTime = 0;
 
 async function loadBook(bookName) {
     const response = await fetch(bookFiles[bookName]);
@@ -91,11 +96,11 @@ async function loadBook(bookName) {
     fillChapterDropdown();
 
     currentChapter = book.chapters[0];
-    currentVerseIndex = 0;
 
     document.getElementById("chapterSelect").value = 
         currentChapter.chapter;
 
+    setupVerseOrder();
     displayCurrentVerse();
 }
 
@@ -139,7 +144,7 @@ function fillDifficultyDropdown() {
 
 function displayCurrentVerse() {
     const verse =
-        currentChapter.verses[currentVerseIndex];
+        verseOrder[verseOrderIndex]
 
     document.getElementById("reference").textContent =
         `${book.book} ${currentChapter.chapter}`;
@@ -156,17 +161,21 @@ function displayCurrentVerse() {
     updateProgressBar();
 }
 
+function getCurrentVerse() {
+    return verseOrder[verseOrderIndex];
+}
+
 function updateProgressBar() {
     const progressBar = document.getElementById("progressBar");
 
-    progressBar.value = currentVerseIndex;
-    progressBar.max = currentChapter.verses.length;
+    progressBar.value = verseOrderIndex;
+    progressBar.max = verseOrder.length;
 
     document.getElementById("progressCurrent").textContent =
-        `${currentChapter.chapter}:${currentVerseIndex + 1}`;
+        `${currentChapter.chapter}:${getCurrentVerse().verse}`;
 
     document.getElementById("progressTotal").textContent =
-        `${currentVerseIndex}/${currentChapter.verses.length}`;
+        `${verseOrderIndex}/${verseOrder.length}`;
 }
 
 function replacingWords(text, difficultyLevel = "Easy") {
@@ -226,6 +235,9 @@ function replacingWords(text, difficultyLevel = "Easy") {
 }
 
 function displayVerseWords() {
+
+    startVerseTime();
+
     const verseText = 
         document.getElementById("verseText");
 
@@ -342,21 +354,26 @@ function calculateScore() {
 
     verseScores.push({
         chapter: currentChapter.chapter,
-        verse: currentVerseIndex + 1,
+        verse: verseOrderIndex + 1,
         correct: verseCorrect,
-        total: verseTotal
+        total: verseTotal,
+        time: getVerseElapsedTime()
     });
 }    
 
 function showScoreScreen() {
-    currentVerseIndex = 0;
+    verseOrderIndex = 0;
     document.getElementById("practiceScreen").classList.add("hidden");
     document.getElementById("scoreScreen").classList.remove("hidden");
+
+    const chapterTotalTime =
+        verseScores.reduce((sum, score) => sum + score.time, 0);
 
     document.getElementById("scoreHeader").textContent =
         `${book.book} ${currentChapter.chapter}`;
     document.getElementById("scoreText").textContent =
-        `${correctCount}/${totalHiddenWords}`
+        `${correctCount}/${totalHiddenWords}
+        (${formatTime(chapterTotalTime)})`
 
     const verseScoreList =
         document.getElementById("verseScoreList");
@@ -366,10 +383,86 @@ function showScoreScreen() {
     verseScores.forEach(score => {
         verseScoreList.innerHTML += `
             <p>
-                ${score.chapter}:${score.verse} - ${score.correct}/${score.total}
+                ${score.chapter}:${score.verse} - ${score.correct}/${score.total} (${formatTime(score.time)})
             </p>
         `;
     });
+}
+
+function shuffleArray(array) {
+    return [...array].sort(() => Math.random() - 0.5);
+}
+
+function ensureNoSequences(list) {
+    if (list.length <= 1) {
+        return list;
+    }
+
+    let shuffledList = [...list];
+    let attempts = 0;
+
+    while (attempts < 50) {
+        let hasSequence = false;
+
+        for (let i = 0; i < shuffledList.length - 1; i++) {
+            const currentVerseNumber =
+                Number(shuffledList[i].verse);
+
+            const nextVerseNumber =
+                Number(shuffledList[i + 1].verse);
+
+            if (nextVerseNumber === currentVerseNumber + 1) {
+                hasSequence = true;
+                break;
+            }
+        }
+
+        if (!hasSequence) {
+            return shuffledList;
+        }
+
+        shuffledList = shuffleArray(list);
+        attempts++;
+    }
+
+    return shuffledList;
+}
+
+function setupVerseOrder() {
+    if (!currentChapter || !Array.isArray(currentChapter.verses)) {
+        verseOrder = [];
+        return;
+    }
+
+    if (verseMode === "random") {
+        verseOrder = ensureNoSequences(
+            shuffleArray(currentChapter.verses)
+        );
+    } else {
+        verseOrder = currentChapter.verses;
+    }
+
+    verseOrderIndex = 0;
+
+    console.log(
+        "Verse order:",
+        verseOrder.map(verse => verse.verse)
+    );
+}
+
+function startVerseTime() {
+    verseTime = Date.now();
+}
+
+function getVerseElapsedTime() {
+    return Date.now() - verseTime;
+}
+
+function formatTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 document
@@ -381,13 +474,12 @@ document
 document
     .getElementById("chapterSelect")
     .addEventListener("change", (event) => {
-        const selectedChapterNumber = Number(event.target.value);
-
         currentChapter = book.chapters.find(
-            chapter => chapter.chapter === selectedChapterNumber
+            chapter => Number(chapter.chapter) === Number(event.target.value)
         );
 
         currentVerseIndex = 0;
+        setupVerseOrder();
         displayCurrentVerse();
     });
 
@@ -406,6 +498,7 @@ document
 document
     .getElementById("nextBtn")   
     .addEventListener("click", () => {
+
         if (stage === 1) {
             calculateScore();
             stage = 2;
@@ -414,8 +507,9 @@ document
         }
 
         if (stage === 2) {
-            if (currentVerseIndex < currentChapter.verses.length - 1) {
-                currentVerseIndex++;
+            if (verseOrderIndex < verseOrder.length - 1) {
+                verseOrderIndex++;
+                stage = 1;
                 displayCurrentVerse();
             } else {
                 showScoreScreen();
@@ -436,6 +530,15 @@ document
         document.getElementById('practiceScreen').classList.remove("hidden");
 
         stage = 1;
+        displayCurrentVerse();
+    });
+
+document
+.getElementById("modeSelect")
+    .addEventListener("change", (event) => {
+        verseMode = event.target.value;
+
+        setupVerseOrder();
         displayCurrentVerse();
     });
 
