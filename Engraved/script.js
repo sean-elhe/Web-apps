@@ -73,6 +73,8 @@ let book = null;
 let currentChapter = null;
 let currentVerseIndex = 0;
 let difficultyLevel = "Easy";
+let stage = 1;
+let currentVerseDisplay = null;
 
 async function loadBook(bookName) {
     const response = await fetch(bookFiles[bookName]);
@@ -135,17 +137,19 @@ function fillDifficultyDropdown() {
 function displayCurrentVerse() {
     const verse =
         currentChapter.verses[currentVerseIndex];
+
     document.getElementById("reference").textContent =
         `${book.book} ${currentChapter.chapter}:${verse.verse}`;
 
     const difficulty =
         document.getElementById("difficultySelect").value;
 
-    const verseDisplay =
+    currentVerseDisplay =
         replacingWords(verse.text, difficulty);
 
-    displayObfuscatedVerse(verseDisplay);
+    stage = 1;
 
+    displayVerseWords();
     updateProgressBar();
 }
 
@@ -218,26 +222,42 @@ function replacingWords(text, difficultyLevel = "Easy") {
     };
 }
 
-function displayObfuscatedVerse(verseDisplay) {
+function displayVerseWords() {
     const verseText = 
         document.getElementById("verseText");
 
+    const savedInputs = {};
+
+    document.querySelectorAll(".verseInput").forEach(input => {
+        savedInputs[input.dataset.index] = input.value;
+    });
+
     verseText.innerHTML = "";
 
-    verseDisplay.wordList.forEach(item => {
-
+    currentVerseDisplay.wordList.forEach(item => {
         if (item.isHidden) {
+            if (stage === 2) {
+                const userInput =
+                    savedInputs[item.index] || "";
 
-            verseText.innerHTML += `
-                <input 
-                    class="verseInput"
-                    data-index="${item.index}"
-                    data-answer="${item.word}"
-                />
-            `;
+                const isCorrect =
+                    closeAnswer(userInput, item.word);
 
+                verseText.innerHTML += `
+                    <span class="${isCorrect ? "correctWord" : "wrongWord"}">
+                        ${item.word}
+                    </span>
+                `;
+            } else {            
+                verseText.innerHTML += `
+                    <input 
+                        class="verseInput"
+                        data-index="${item.index}"
+                        data-answer="${item.word}"
+                    />
+                `;
+            }
         } else {
-
             verseText.innerHTML += `
                 <span>${item.word}</span>
             `;
@@ -246,7 +266,19 @@ function displayObfuscatedVerse(verseDisplay) {
         verseText.innerHTML += " ";
     });
 
-    setupInputLogic();
+    if (stage === 1) {
+        setupInputLogic();
+    }
+}
+
+function closeAnswer(userAnswer, correctAnswer) {
+    const cleanUser =
+        userAnswer.toLowerCase().replace(/[^a-z]/g, "");
+
+    const cleanCorrect =
+        correctAnswer.toLowerCase().replace(/[^a-z]/g, "");
+
+    return cleanUser === cleanCorrect;
 }
 
 function setupInputLogic(){
@@ -315,9 +347,17 @@ document
 document
     .getElementById("nextBtn")   
     .addEventListener("click", () => {
-        if (currentVerseIndex < currentChapter.verses.length - 1) {
-            currentVerseIndex++;
-            displayCurrentVerse();
+        if (stage === 1) {
+            stage = 2;
+            displayVerseWords();
+            return;
+        }
+
+        if (stage === 2) {
+            if (currentVerseIndex < currentChapter.verses.length - 1) {
+                currentVerseIndex++;
+                displayCurrentVerse();
+            }
         }
     });
 
