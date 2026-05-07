@@ -1,156 +1,138 @@
-const bookFiles = {
-"Genesis": "data/Genesis.json",
-"Exodus": "data/Exodus.json",
-"Leviticus": "data/Leviticus.json",
-"Numbers": "data/Numbers.json",
-"Deuteronomy": "data/Deuteronomy.json",
-"Joshua": "data/Joshua.json",
-"Judges": "data/Judges.json",
-"Ruth": "data/Ruth.json",
-"1 Samuel": "data/1_Samuel.json",
-"2 Samuel": "data/2_Samuel.json",
-"1 Kings": "data/1_Kings.json",
-"2 Kings": "data/2_Kings.json",
-"1 Chronicles": "data/1_Chronicles.json",
-"2 Chronicles": "data/2_Chronicles.json",
-"Ezra": "data/Ezra.json",
-"Nehemiah": "data/Nehemiah.json",
-"Esther": "data/Esther.json",
-"Job": "data/Job.json",
-"Psalms": "data/Psalms.json",
-"Proverbs": "data/Proverbs.json",
-"Ecclesiastes": "data/Ecclesiastes.json",
-"Song of Solomon": "data/Song_of_Solomon.json",
-"Isaiah": "data/Isaiah.json",
-"Jeremiah": "data/Jeremiah.json",
-"Lamentations": "data/Lamentations.json",
-"Ezekiel": "data/Ezekiel.json",
-"Daniel": "data/Daniel.json",
-"Hosea": "data/Hosea.json",
-"Joel": "data/Joel.json",
-"Amos": "data/Amos.json",
-"Obadiah": "data/Obadiah.json",
-"Jonah": "data/Jonah.json",
-"Micah": "data/Micah.json",
-"Nahum": "data/Nahum.json",
-"Habakkuk": "data/Habakkuk.json",
-"Zephaniah": "data/Zephaniah.json",
-"Haggai": "data/Haggai.json",
-"Zechariah": "data/Zechariah.json",
-"Malachi": "data/Malachi.json",
-"Matthew": "data/Matthew.json",
-"Mark": "data/Mark.json",
-"Luke": "data/Luke.json",
-"John": "data/John.json",
-"Acts": "data/Acts.json",
-"Romans": "data/Romans.json",
-"1 Corinthians": "data/1_Corinthians.json",
-"2 Corinthians": "data/2_Corinthians.json",
-"Galatians": "data/Galatians.json",
-"Ephesians": "data/Ephesians.json",
-"Philippians": "data/Philippians.json",
-"Colossians": "data/Colossians.json",
-"1 Thessalonians": "data/1_Thessalonians.json",
-"2 Thessalonians": "data/2_Thessalonians.json",
-"1 Timothy": "data/1_Timothy.json",
-"2 Timothy": "data/2_Timothy.json",
-"Titus": "data/Titus.json",
-"Philemon": "data/Philemon.json",
-"Hebrews": "data/Hebrews.json",
-"James": "data/James.json",
-"1 Peter": "data/1_Peter.json",
-"2 Peter": "data/2_Peter.json",
-"1 John": "data/1_John.json",
-"2 John": "data/2_John.json",
-"3 John": "data/3_John.json",
-"Jude": "data/Jude.json",
-"Revelation": "data/Revelation.json"
-}
-
-const difficultyLevels = ["Easy", "Medium", "Hard"];
-
 let book = null;
 let currentChapter = null;
-let currentVerseIndex = 0;
-let difficultyLevel = "Easy";
-let stage = 1;
-let currentVerseDisplay = null;
-let correctCount = 0;
-let totalHiddenWords = 0;
 
+let stage = 1;
 let verseMode = "ordered";
-let verseScores = [];
+
 let verseOrder = [];
 let verseOrderIndex = 0;
+
+let currentVerseDisplay = null;
+
+let correctCount = 0;
+let totalHiddenWords = 0;
+let verseScores = [];
+
 let verseTime = 0;
+
 let selectedInput = null;
 let hintCount = 0;
 
-async function loadBook(bookName) {
-    const response = await fetch(bookFiles[bookName]);
-    book = await response.json();
-    console.log(book);
+let selectedTranslation = "ESV";
+let selectedBook = "Genesis";
+let selectedChapter = 1;
 
+const difficultyLevels = ["Easy", "Medium", "Hard"];
 
-    document.getElementById("reference").textContent = 
-        book.book;
+async function loadTranslations() {
+    const response = await fetch("/api/translations");
+    const translations = await response.json();
 
-    fillChapterDropdown();
+    const translationSelect =
+        document.getElementById("translationSelect");
 
-    currentChapter = book.chapters[0];
+    translationSelect.innerHTML = "";
 
-    document.getElementById("chapterSelect").value = 
-        currentChapter.chapter;
+    translations.forEach(item => {
+        translationSelect.innerHTML += `
+            <option value="${item.translation}">
+                ${item.translation}
+            </option>
+        `;
+    });
 
-    resetScore();    
+    translationSelect.value = selectedTranslation;
+}
+
+async function loadBooks() {
+    const response = await fetch(
+        `/api/books?translation=${selectedTranslation}`
+    );
+
+    const books = await response.json();
+
+    const bookSelect =
+        document.getElementById("bookSelect");
+
+    bookSelect.innerHTML = "";
+
+    books.forEach(book => {
+        bookSelect.innerHTML += `
+            <option value="${book.book}">
+                ${book.book}
+            </option>
+        `;
+    });
+
+    bookSelect.value = selectedBook;
+}
+
+async function loadChapters() {
+    const response = await fetch(
+        `/api/chapters?translation=${selectedTranslation}&book=${selectedBook}`
+    );
+
+    const chapters = await response.json();
+
+    const chapterSelect =
+        document.getElementById("chapterSelect");
+
+    chapterSelect.innerHTML = "";
+
+    chapters.forEach(chapter => {
+        chapterSelect.innerHTML += `
+            <option value="${chapter}">
+                ${chapter}
+            </option>
+        `;
+    });
+
+    chapterSelect.value = selectedChapter;
+}
+
+async function loadChapter() {
+    const response = await fetch(
+        `/api/chapter?translation=${selectedTranslation}&book=${selectedBook}&chapter=${selectedChapter}`
+    );
+
+    const verses = await response.json();
+
+    currentChapter = {
+        chapter: selectedChapter,
+        verses: verses
+    };
+
+    book = {
+        book: selectedBook
+    };
+
     setupVerseOrder();
+    resetScore();
     displayCurrentVerse();
 }
 
-function fillBookDropdown() {
-    const bookSelect = document.getElementById("bookSelect");
-
-    Object.keys(bookFiles).forEach((bookName) => {
-        const option = document.createElement("option");
-
-        option.value = bookName;
-        option.textContent = bookName;
-
-        bookSelect.appendChild(option);
-    });
-}
-
-function fillChapterDropdown() {
-    const chapterSelect = document.getElementById("chapterSelect");
-    chapterSelect.innerHTML = "";
-
-    book.chapters.forEach((chapter) => {
-        const option = document.createElement("option");
-        option.value = chapter.chapter;
-        option.textContent = chapter.chapter;
-        chapterSelect.appendChild(option);
-    });
-}
-
 function fillDifficultyDropdown() {
-    const difficultySelect = document.getElementById("difficultySelect");
+    const difficultySelect =
+        document.getElementById("difficultySelect");
 
     difficultySelect.innerHTML = "";
 
-    difficultyLevels.forEach((level) => {
-        const option = document.createElement("option");
-        option.value = level;
-        option.textContent = level;
-        difficultySelect.appendChild(option);
+    difficultyLevels.forEach(level => {
+        difficultySelect.innerHTML += `
+            <option value="${level}">
+                ${level}
+            </option>
+        `;
     });
 }
 
 function displayCurrentVerse() {
-    const verse =
-        verseOrder[verseOrderIndex]
+    startVerseTime();
+
+    const verse = verseOrder[verseOrderIndex];
 
     document.getElementById("reference").textContent =
-        `${book.book} ${currentChapter.chapter}`;
+        `${verse.book} ${verse.chapter}:${verse.verse}`;
 
     const difficulty =
         document.getElementById("difficultySelect").value;
@@ -164,18 +146,15 @@ function displayCurrentVerse() {
     updateProgressBar();
 }
 
-function getCurrentVerse() {
-    return verseOrder[verseOrderIndex];
-}
-
 function updateProgressBar() {
-    const progressBar = document.getElementById("progressBar");
+    const progressBar =
+        document.getElementById("progressBar");
 
     progressBar.value = verseOrderIndex;
     progressBar.max = verseOrder.length;
 
     document.getElementById("progressCurrent").textContent =
-        `${currentChapter.chapter}:${getCurrentVerse().verse}`;
+        `${currentChapter.chapter}:${verseOrder[verseOrderIndex].verse}`;
 
     document.getElementById("progressTotal").textContent =
         `${verseOrderIndex}/${verseOrder.length}`;
@@ -224,31 +203,29 @@ function replacingWords(text, difficultyLevel = "Easy") {
         }
 
         return {
-            word: word,
-            isHidden: isHidden,
-            index: index
+            word,
+            isHidden,
+            index
         };
     });
 
     return {
         original: text,
-        wordList: wordList,
-        hiddenWords: hiddenWords
+        wordList,
+        hiddenWords
     };
 }
 
 function displayVerseWords() {
-
-    startVerseTime();
-
-    const verseText = 
+    const verseText =
         document.getElementById("verseText");
 
     const savedInputs = {};
 
-    document.querySelectorAll(".verseInput").forEach(input => {
-        savedInputs[input.dataset.index] = input.value;
-    });
+    document.querySelectorAll(".verseInput")
+        .forEach(input => {
+            savedInputs[input.dataset.index] = input.value;
+        });
 
     verseText.innerHTML = "";
 
@@ -266,9 +243,9 @@ function displayVerseWords() {
                         ${item.word}
                     </span>
                 `;
-            } else {            
+            } else {
                 verseText.innerHTML += `
-                    <input 
+                    <input
                         class="verseInput"
                         data-index="${item.index}"
                         data-answer="${item.word}"
@@ -299,39 +276,38 @@ function closeAnswer(userAnswer, correctAnswer) {
     return cleanUser === cleanCorrect;
 }
 
-function setupInputLogic(){
-        const inputs =
-            document.querySelectorAll(".verseInput");
+function setupInputLogic() {
+    const inputs =
+        document.querySelectorAll(".verseInput");
 
-        inputs.forEach((input, index) => {
+    inputs.forEach((input, index) => {
 
-            input.addEventListener("focus", (event) => {
-                selectedInput = input;
-            });
-            
-            input.addEventListener("input", (event) => {
-                
-                event.target.value = event.target.value
-                    .toLowerCase()
-                    .replace(/[^a-z]/g, "");
-
-                const answer =
-                    event.target.dataset.answer.toLowerCase();
-
-                // if (
-                //     event.target.value.length >= answer.length &&
-                //     index < inputs.length - 1
-                // ) {
-                //     inputs[index + 2].focus();
-                // }
-
-                if (event.target.value === answer) {
-                    event.target.classList.add("correct");
-                } else {
-                    event.target.classList.remove("correct");
-                }
-            });
+        input.addEventListener("focus", () => {
+            selectedInput = input;
         });
+
+        input.addEventListener("input", event => {
+            event.target.value = event.target.value
+                .toLowerCase()
+                .replace(/[^a-z]/g, "");
+
+            const answer =
+                event.target.dataset.answer.toLowerCase();
+
+            if (
+                event.target.value.length >= answer.length &&
+                index < inputs.length - 1
+            ) {
+                inputs[index + 1].focus();
+            }
+
+            if (event.target.value === answer) {
+                event.target.classList.add("correct");
+            } else {
+                event.target.classList.remove("correct");
+            }
+        });
+    });
 }
 
 function calculateScore() {
@@ -339,15 +315,13 @@ function calculateScore() {
     let verseTotal = 0;
 
     currentVerseDisplay.wordList.forEach(item => {
-
         if (item.isHidden) {
-
             verseTotal++;
 
             const userInput =
                 document.querySelector(
                     `input[data-index="${item.index}"]`
-            )?.value || "" ;
+                )?.value || "";
 
             if (closeAnswer(userInput, item.word)) {
                 verseCorrect++;
@@ -358,33 +332,43 @@ function calculateScore() {
     correctCount += verseCorrect;
     totalHiddenWords += verseTotal;
 
+    const currentVerse = verseOrder[verseOrderIndex];
+
     verseScores.push({
-        chapter: currentChapter.chapter,
-        verse: verseOrderIndex + 1,
+        chapter: currentVerse.chapter,
+        verse: currentVerse.verse,
         correct: verseCorrect,
         total: verseTotal,
         time: getVerseElapsedTime()
     });
-}    
+}
 
 function showScoreScreen() {
-    verseOrderIndex = 0;
-    document.getElementById("practiceScreen").classList.add("hidden");
-    document.getElementById("scoreScreen").classList.remove("hidden");
+    document.getElementById("practiceScreen")
+        .classList.add("hidden");
+
+    document.getElementById("scoreScreen")
+        .classList.remove("hidden");
+
+    const overallPercentage = 
+        ((correctCount / totalHiddenWords) * 100).toFixed(1);
 
     const chapterTotalTime =
         verseScores.reduce((sum, score) => sum + score.time, 0);
 
     document.getElementById("scoreHeader").textContent =
         `${book.book} ${currentChapter.chapter}`;
+    document.getElementById("scoreText").textContent =
+        `${correctCount}/${totalHiddenWords}
+        | (${overallPercentage}%)
+        | ${formatTime(chapterTotalTime)}`;
+
+    document.getElementById("translation").textContent =
+        `Translation: ${selectedTranslation}`;
     document.getElementById("difficulty").textContent =
         `Difficulty: ${document.getElementById("difficultySelect").value}`;
     document.getElementById("hints").textContent =
         `Hints used: ${hintCount}`;
-
-    document.getElementById("scoreText").textContent =
-        `${correctCount}/${totalHiddenWords}
-        (${formatTime(chapterTotalTime)})`
 
     const verseScoreList =
         document.getElementById("verseScoreList");
@@ -392,9 +376,17 @@ function showScoreScreen() {
     verseScoreList.innerHTML = "";
 
     verseScores.forEach(score => {
+
+        const versePercentage =
+            ((score.correct / score.total) * 100).toFixed(1);
+
         verseScoreList.innerHTML += `
             <p>
-                ${score.chapter}:${score.verse} - ${score.correct}/${score.total} (${formatTime(score.time)})
+                ${score.chapter}:${score.verse}
+                ~
+                ${score.correct}/${score.total}
+                | (${versePercentage}%)
+                | ${formatTime(score.time)}
             </p>
         `;
     });
@@ -454,11 +446,6 @@ function setupVerseOrder() {
     }
 
     verseOrderIndex = 0;
-
-    console.log(
-        "Verse order:",
-        verseOrder.map(verse => verse.verse)
-    );
 }
 
 function startVerseTime() {
@@ -473,6 +460,7 @@ function formatTime(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
+
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
@@ -481,37 +469,54 @@ function resetScore() {
     totalHiddenWords = 0;
     verseScores = [];
     verseTime = 0;
+    hintCount = 0;
 }
 
 function clearInputs() {
-    document.querySelectorAll(".verseInput").forEach(input => {
-        input.value = "";
-    });
+    document.querySelectorAll(".verseInput")
+        .forEach(input => {
+            input.value = "";
+        });
 }
 
 document
+    .getElementById("translationSelect")
+    .addEventListener("change", async event => {
+        selectedTranslation = event.target.value;
+
+        await loadBooks();
+
+        selectedBook =
+            document.getElementById("bookSelect").value;
+
+        selectedChapter = 1;
+
+        await loadChapters();
+        await loadChapter();
+    });
+
+document
     .getElementById("bookSelect")
-    .addEventListener("change", (event) => {
-        loadBook(event.target.value);
+    .addEventListener("change", async event => {
+        selectedBook = event.target.value;
+
+        selectedChapter = 1;
+
+        await loadChapters();
+        await loadChapter();
     });
 
 document
     .getElementById("chapterSelect")
-    .addEventListener("change", (event) => {
-        currentChapter = book.chapters.find(
-            chapter => Number(chapter.chapter) === Number(event.target.value)
-        );
+    .addEventListener("change", async event => {
+        selectedChapter = Number(event.target.value);
 
-        currentVerseIndex = 0;
-        resetScore();    
-        setupVerseOrder();
-        displayCurrentVerse();
+        await loadChapter();
     });
 
 document
     .getElementById("difficultySelect")
     .addEventListener("change", () => {
-        resetScore();    
         displayCurrentVerse();
     });
 
@@ -522,7 +527,7 @@ document
     });
 
 document
-    .getElementById("nextBtn")   
+    .getElementById("nextBtn")
     .addEventListener("click", () => {
 
         if (stage === 1) {
@@ -544,18 +549,12 @@ document
     });
 
 document
-    .getElementById("submitBtn")   
-    .addEventListener("click", () => {
-        showScoreScreen();
-    });
-
-document
     .getElementById("prevBtn")
     .addEventListener("click", () => {
         verseOrderIndex = 0;
         resetScore();
         displayCurrentVerse();
-    });    
+    });
 
 document
     .getElementById("hintBtn")
@@ -602,24 +601,56 @@ document
     });
 
 document
+    .getElementById("submitBtn")
+    .addEventListener("click", () => {
+        showScoreScreen();
+    });
+
+document
     .getElementById("restartBtn")
     .addEventListener("click", () => {
-        document.getElementById('scoreScreen').classList.add("hidden");
-        document.getElementById('practiceScreen').classList.remove("hidden");
+        document.getElementById("scoreScreen")
+            .classList.add("hidden");
 
-        stage = 1;
+        document.getElementById("practiceScreen")
+            .classList.remove("hidden");
+
+        verseOrderIndex = 0;
+        resetScore();
         displayCurrentVerse();
     });
 
 document
-.getElementById("modeSelect")
-    .addEventListener("change", (event) => {
+    .getElementById("modeSelect")
+    .addEventListener("change", event => {
         verseMode = event.target.value;
 
         setupVerseOrder();
         displayCurrentVerse();
     });
 
-fillDifficultyDropdown();
-fillBookDropdown();
-loadBook("Genesis");
+async function initializeApp() {
+    fillDifficultyDropdown();
+
+    await loadTranslations();
+        selectedTranslation =
+        document.getElementById("translationSelect").value;
+
+    await loadBooks();
+
+    selectedBook = "Psalm";
+
+    document.getElementById("bookSelect").value =
+        selectedBook;
+
+    await loadChapters();
+        
+    selectedChapter = 23;
+
+    document.getElementById("chapterSelect").value =
+        selectedChapter;
+
+    await loadChapter();
+}
+
+initializeApp();

@@ -14,6 +14,7 @@
     <div class="selector-row">
       <select id="bookSelect"></select>
       <select id="chapterSelect"></select>
+      <select id="translationSelect"></select>
       <select id="difficultySelect"></select>
       <select id="modeSelect">
         <option value="ordered">Ordered</option>
@@ -27,10 +28,9 @@
         <span id="progressTotal"></span>
     </div>
 
-    <h1 id="reference">Genesis</h1>
+    <h1 id="reference"></h1>
 
     <p id="verseText">
-      Click the button to show a verse.
     </p>
 
     <div class="nav-row">
@@ -47,15 +47,16 @@
   <main id="scoreScreen" class="card hidden">
     <h1 id="scoreHeader"></h1>
 
+    <p id="scoreText"></p>
+    <p id="translation">Translation: </p>
     <p id="difficulty">Difficulty: </p>
     <p id="hints">Hints used: </p>
     
 
-    <p id="scoreText"></p>
 
     <div id="verseScoreList"></div>
 
-    <button id="restartBtn">Restart</button>
+    <button id="restartBtn"><></button>
   </main>
 
   <script src="js/script.js"></script>
