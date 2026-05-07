@@ -219,17 +219,66 @@ function replacingWords(text, difficultyLevel = "Easy") {
 }
 
 function displayObfuscatedVerse(verseDisplay) {
-    const verseText = document.getElementById("verseText");
+    const verseText = 
+        document.getElementById("verseText");
 
     verseText.innerHTML = "";
 
     verseDisplay.wordList.forEach(item => {
+
         if (item.isHidden) {
-            verseText.innerHTML += `<strong><u>_____</u></strong> `;
+
+            verseText.innerHTML += `
+                <input 
+                    class="verseInput"
+                    data-index="${item.index}"
+                    data-answer="${item.word}"
+                />
+            `;
+
         } else {
-            verseText.innerHTML += `${item.word} `;
+
+            verseText.innerHTML += `
+                <span>${item.word}</span>
+            `;
         }
+
+        verseText.innerHTML += " ";
     });
+
+    setupInputLogic();
+}
+
+function setupInputLogic(){
+
+        const inputs =
+            document.querySelectorAll(".verseInput");
+
+        inputs.forEach((input, index) => {
+            
+            input.addEventListener("input", (event) => {
+                
+                event.target.value = event.target.value
+                    .toLowerCase()
+                    .replace(/[^a-z]/g, "");
+
+                const answer =
+                    event.target.dataset.answer.toLowerCase();
+
+                if (
+                    event.target.value.length >= answer.length &&
+                    index < inputs.length - 1
+                ) {
+                    inputs[index + 2].focus();
+                }
+
+                if (event.target.value === answer) {
+                    event.target.classList.add("correct");
+                } else {
+                    event.target.classList.remove("correct");
+                }
+            });
+        });
 }
 
 document
