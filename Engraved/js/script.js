@@ -83,6 +83,8 @@ let verseScores = [];
 let verseOrder = [];
 let verseOrderIndex = 0;
 let verseTime = 0;
+let selectedInput = null;
+let hintCount = 0;
 
 async function loadBook(bookName) {
     const response = await fetch(bookFiles[bookName]);
@@ -100,6 +102,7 @@ async function loadBook(bookName) {
     document.getElementById("chapterSelect").value = 
         currentChapter.chapter;
 
+    resetScore();    
     setupVerseOrder();
     displayCurrentVerse();
 }
@@ -297,11 +300,14 @@ function closeAnswer(userAnswer, correctAnswer) {
 }
 
 function setupInputLogic(){
-
         const inputs =
             document.querySelectorAll(".verseInput");
 
         inputs.forEach((input, index) => {
+
+            input.addEventListener("focus", (event) => {
+                selectedInput = input;
+            });
             
             input.addEventListener("input", (event) => {
                 
@@ -312,12 +318,12 @@ function setupInputLogic(){
                 const answer =
                     event.target.dataset.answer.toLowerCase();
 
-                if (
-                    event.target.value.length >= answer.length &&
-                    index < inputs.length - 1
-                ) {
-                    inputs[index + 2].focus();
-                }
+                // if (
+                //     event.target.value.length >= answer.length &&
+                //     index < inputs.length - 1
+                // ) {
+                //     inputs[index + 2].focus();
+                // }
 
                 if (event.target.value === answer) {
                     event.target.classList.add("correct");
@@ -371,6 +377,11 @@ function showScoreScreen() {
 
     document.getElementById("scoreHeader").textContent =
         `${book.book} ${currentChapter.chapter}`;
+    document.getElementById("difficulty").textContent =
+        `Difficulty: ${document.getElementById("difficultySelect").value}`;
+    document.getElementById("hints").textContent =
+        `Hints used: ${hintCount}`;
+
     document.getElementById("scoreText").textContent =
         `${correctCount}/${totalHiddenWords}
         (${formatTime(chapterTotalTime)})`
@@ -465,6 +476,19 @@ function formatTime(ms) {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function resetScore() {
+    correctCount = 0;
+    totalHiddenWords = 0;
+    verseScores = [];
+    verseTime = 0;
+}
+
+function clearInputs() {
+    document.querySelectorAll(".verseInput").forEach(input => {
+        input.value = "";
+    });
+}
+
 document
     .getElementById("bookSelect")
     .addEventListener("change", (event) => {
@@ -479,6 +503,7 @@ document
         );
 
         currentVerseIndex = 0;
+        resetScore();    
         setupVerseOrder();
         displayCurrentVerse();
     });
@@ -486,11 +511,12 @@ document
 document
     .getElementById("difficultySelect")
     .addEventListener("change", () => {
+        resetScore();    
         displayCurrentVerse();
     });
 
 document
-    .getElementById("randomBtn")
+    .getElementById("refreshBtn")
     .addEventListener("click", () => {
         displayCurrentVerse();
     });
@@ -518,13 +544,65 @@ document
     });
 
 document
-    .getElementById("prevBtn")   
+    .getElementById("submitBtn")   
     .addEventListener("click", () => {
         showScoreScreen();
     });
 
 document
-    .getElementById("restartBtn")   
+    .getElementById("prevBtn")
+    .addEventListener("click", () => {
+        verseOrderIndex = 0;
+        resetScore();
+        displayCurrentVerse();
+    });    
+
+document
+    .getElementById("hintBtn")
+    .addEventListener("click", () => {
+        hintCount++;
+
+        if (!selectedInput) {
+            return;
+        }
+
+        const answer =
+            selectedInput.dataset.answer
+                .toLowerCase()
+                .replace(/[^a-z]/g, "");
+
+        const current =
+            selectedInput.value
+                .toLowerCase()
+                .replace(/[^a-z]/g, "");
+
+        if (current.length < answer.length) {
+            const newText =
+                answer.slice(0, current.length + 1);
+
+            selectedInput.value = newText;
+
+            selectedInput.focus();
+
+            selectedInput.setSelectionRange(
+                newText.length,
+                newText.length
+            );
+
+            selectedInput.dispatchEvent(
+                new Event("input")
+            );
+        }
+    });
+
+document
+    .getElementById("clearBtn")
+    .addEventListener("click", () => {
+        clearInputs();
+    });
+
+document
+    .getElementById("restartBtn")
     .addEventListener("click", () => {
         document.getElementById('scoreScreen').classList.add("hidden");
         document.getElementById('practiceScreen').classList.remove("hidden");
